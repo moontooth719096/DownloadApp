@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32819.101
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DownloadAppWeb", "DownloadAppWeb\DownloadAppWeb.csproj", "{76512541-AA0F-4611-9A24-C7BEE7CA966B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DownloadAppAPI", "DownloadAppAPI\DownloadAppAPI.csproj", "{14FCE8F8-F198-4E4B-A419-ED198EAF6808}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{76512541-AA0F-4611-9A24-C7BEE7CA966B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76512541-AA0F-4611-9A24-C7BEE7CA966B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76512541-AA0F-4611-9A24-C7BEE7CA966B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76512541-AA0F-4611-9A24-C7BEE7CA966B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14FCE8F8-F198-4E4B-A419-ED198EAF6808}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14FCE8F8-F198-4E4B-A419-ED198EAF6808}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14FCE8F8-F198-4E4B-A419-ED198EAF6808}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14FCE8F8-F198-4E4B-A419-ED198EAF6808}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A990BF7F-A682-4264-A245-A558F5955FBA}
+	EndGlobalSection
+EndGlobal

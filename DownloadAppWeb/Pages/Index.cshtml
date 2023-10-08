@@ -1,0 +1,156 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<link href="~/lib/bootstrap-table/css/bootstrap-table.min.css" rel="stylesheet" />
+@*<link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css" />*@
+<div id="YoutubeDonloadApp">
+    <div class="row">
+        <input type="text" class="col-5" v-model="InputListID" />
+        <button class="col-2" :onclick="listget">Search</button>
+    </div>
+    <div class="row">
+        <div class="row">
+            <div>{{Donloadprogress.message}}</div>
+        </div>
+        <div class="row" v-show="SelectData">
+            <button id="Download_Btn" :onclick="download" >Download</button>
+            <br />
+            <div class="progress" v-show="Donloadprogress.progress>0">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" :aria-valuenow="Donloadprogress.progress" aria-valuemin="0" aria-valuemax="100" :style="{ width: Donloadprogress.progress+'%' }"></div>
+            </div>
+        </div>
+
+        <table class="table table-hover">
+            <tbody>
+                <tr v-for="item in Data">
+                    <td class="w-5 align-middle">
+                        <input type="checkbox" :id="item.id" v-model="item.isCheck" />
+                    </td>
+                    <td class="w-15">
+                        <a :href="item.url" target="_blank">
+                            <img style="width:100px;" :src="item.thumbnailUrl" class="img-fluid img-thumbnail" alt="...">
+                        </a>
+                    </td>
+                    <td class="w-auto align-middle">
+                        {{ item.title }}
+                    </td>
+                    <td class="w-5 align-middle">
+                        {{ item.playTime }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section scripts{
+    @*<script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>*@
+    <script src="~/lib/bootstrap-table/js/bootstrap-table-vue.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+    <script src="~/js/signalr/dist/browser/signalr.js"></script>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    InputListID: '',
+                    Data: [],
+                    SelectData: [],
+                    isShowDownload: false,
+                    Donloadprogress: {
+                        progress: 0,
+                        message: ''
+                    },
+                    hub: {
+                        connection: {}
+                        , HubConnId: ''
+                    }
+                }
+            },
+            created() {
+                const thatA = this
+                thatA.hub.connection = new signalR.HubConnectionBuilder()
+                    .withUrl("https://localhost:44353/youtubeDownloadProgressHub")
+                    .build();
+
+                //與Server建立連線
+                thatA.hub.connection.start().then(function () {
+                    console.log("連線完成");
+                }).catch(function (err) {
+                    alert('連線錯誤: ' + err.toString());
+                });
+                // 更新進度
+                thatA.hub.connection.on("YoutubeDownloadProgress", function (message, percent) {
+                    if (percent == 100) {
+                        thatA.Donloadprogress.message = '檔案壓縮中..';
+                    } else {
+                        thatA.Donloadprogress.progress = percent;
+                        thatA.Donloadprogress.message = message + ' ' + percent + '%';
+                    }
+                });
+            },
+            methods: {
+                //取得音樂清單
+                listget: function () {
+                    let url = 'https://localhost:44353/api/YoutubeDownload/PlayListGet?PlaylistId=' + this.InputListID;
+                    axios
+                        .get(url)
+                        .then((response) => {
+                            if (response.data.length > 0) {
+                                this.Data = response.data;
+                                this.isShowDownload = true;
+                            }
+                        })
+                        .catch(function (error) { // 请求失败处理
+                            console.log(error);
+                        })
+
+                },
+                //執行音樂下載
+                download: function () {
+                    document.getElementById('Download_Btn').disabled = true;
+                    //篩選有勾選的資料
+                    let ndata = _.filter(this.Data, ['isCheck', true]);
+                    //只取id 與 title欄位
+                    this.SelectData = _.map(ndata, obj => _.pick(obj, ['id', 'title']));
+                    axios.post('https://localhost:44353/api/YoutubeDownload/Download',
+                        this.SelectData,
+                        {
+                            responseType: 'blob'
+                        })
+                        .then((response) => this.downloadData(response))
+                        .catch((error) => console.log(error))
+                },
+                //壓縮完後 下載檔案
+                downloadData: function (data) {
+                    if (!data) {
+                        return
+                    }
+                    let url = window.URL.createObjectURL(new Blob([data.data]))
+                    let link = document.createElement('a')
+                    link.style.display = 'none'
+                    link.href = url
+                    //link.setAttribute('download', 'excel.xlsx')
+
+                    let timestamp = new Date().getTime();
+                    link.download = `${timestamp}.zip`;
+                    document.body.appendChild(link);
+                    link.click();
+                    this.downloadComplate();
+                },
+                //下載完成後設定
+                downloadComplate: function () {
+                    this.Donloadprogress.message = '檔案下載完成';
+                    this.Donloadprogress.progress = 0;
+                    this.Donloadprogress.message = '';
+                    this.isShowDownload = false;
+                }
+            }
+        }).mount('#YoutubeDonloadApp')
+    </script>
+}
