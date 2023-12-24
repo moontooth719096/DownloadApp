@@ -103,7 +103,7 @@
                         .then((response) => {
                             if (response.data.length > 0) {
                                 this.Data = response.data;
-                                this.isShowDownload = true;
+                                
                             }
                         })
                         .catch(function (error) { // 请求失败处理
@@ -114,6 +114,7 @@
                 //執行音樂下載
                 download: function () {
                     document.getElementById('Download_Btn').disabled = true;
+                    this.isShowDownload = true;
                     //篩選有勾選的資料
                     let ndata = _.filter(this.Data, ['isCheck', true]);
                     //只取id 與 title欄位
@@ -142,6 +143,7 @@
                     document.body.appendChild(link);
                     link.click();
                     this.downloadComplate();
+                    document.getElementById('Download_Btn').disabled = false;
                 },
                 //下載完成後設定
                 downloadComplate: function () {

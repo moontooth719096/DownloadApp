@@ -1,13 +1,6 @@
 ﻿using DownloadAppAPI.Interfaces;
 using DownloadAppAPI.Models;
-using DownloadAppAPI.SignalRHub;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using System.Collections.Generic;
-using System.Linq;
-using YoutubeExplode.Playlists;
-using YoutubeExplode.Videos;
 
 namespace DownloadAppAPI.Controllers
 {

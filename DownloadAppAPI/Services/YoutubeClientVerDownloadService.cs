@@ -3,10 +3,8 @@ using DownloadAppAPI.Models;
 using DownloadAppAPI.SignalRHub;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
+using NAudio.Wave;
+using NReco.VideoConverter;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 using YoutubeExplode;
@@ -65,27 +63,37 @@ namespace DownloadAppAPI.Services
             double TotalCount = Dolist.Count();
             string message = $"音樂下載中";
             double percentage = 0;
+            
             while (Dolist.Count() > 0)
             {
                 IEnumerable<SelectDataModel> nowlist = Dolist.Take(Takecount);
+                Action updateProgress = async () =>
+                {
+                    percentage = 100 - (Math.Round((Dolist.Count() / TotalCount) * 100));
+                    await _youtubeDownloadProgressHub.Clients.All.SendAsync("YoutubeDownloadProgress", message, percentage);
+                };
                 foreach (var searchResult in nowlist)
                 {
-                    string filename = $"{searchResult.Title}.mp3";
-
+                    
+                    string filename = $"{searchResult.Title}.mp4";
+                    
                     //移除windows不允許的檔名字元
                     filename = Regex.Replace(filename, "[\\/:*?\"<>|]", "");
                     // 保存 MP3 文件
-                    var outPath = Path.Combine(folderPath, filename);
-                    outPath = outPath.Replace(" ", "");
+                    //var outPath = Path.Combine(folderPath, filename);
+                    filename = filename.Replace(" ", "");
 
-                    downloadList.Add(Task.Run(async () => await ConvertToMP3(searchResult.VideoId, outPath, filename)));
+                    downloadList.Add(Task.Run(async () => { 
+                        await ConvertToMP3(searchResult.VideoId, folderPath, filename);
+                        updateProgress();
+                    }));
 
                 }
-
+      
                 await Task.WhenAll(downloadList);
                 Dolist.RemoveRange(0, nowlist.Count());
-                percentage = 100-(Math.Round((Dolist.Count()/ TotalCount)*100));
-                await _youtubeDownloadProgressHub.Clients.All.SendAsync("YoutubeDownloadProgress", message, percentage);
+                //downloadList.EX.Exception.InnerExceptions.Select(o => o.Message).ToArray());
+
             }
 
             percentage = 100;
@@ -113,12 +121,6 @@ namespace DownloadAppAPI.Services
             }
             memoryStream.Seek(0, SeekOrigin.Begin);
 
-            // 删除临时文件和文件夹
-            //Directory.Delete(tempFolderPath, true);
-            //System.IO.File.Delete(zipFilePath);
-
-            // 返回文件响应
-            //return File(memoryStream, "application/zip", zipFileName);
             return new FileStreamResult(memoryStream, System.Net.Mime.MediaTypeNames.Application.Octet);
 
         }
@@ -129,7 +131,7 @@ namespace DownloadAppAPI.Services
 
             return await _youtubeclient.Playlists.GetVideosAsync(playlistUrl);
         }
-        private async Task ConvertToMP3(VideoId item, string outPath, string filename)
+        private async Task ConvertToMP3(VideoId item, string folderPath, string filename)
         {
             try
             {
@@ -138,22 +140,71 @@ namespace DownloadAppAPI.Services
 
                 // 擷取聲音(取最高音質
                 var audioStreamInfo = video.GetAudioOnlyStreams().GetWithHighestBitrate();
+                //var audioStreamInfo = video.GetAudioStreams().GetWithHighestBitrate();
+                //var audioStreamInfo = video.GetAudioOnlyStreams().Where(x=>x.Container == Container.Mp4).GetWithHighestBitrate();
 
-                //var audioStreamInfo = video.GetAudioOnlyStreams().OrderByDescending(x => x.Bitrate.KiloBitsPerSecond).FirstOrDefault(x=>x.Bitrate.KiloBitsPerSecond<100);
-                //var audioStream = await _youtubeclient.Videos.Streams.GetAsync(audioStreamInfo);
+                //設定要轉換的kbps
+                int nowkbps = kbpsSet(audioStreamInfo.Bitrate.KiloBitsPerSecond);
 
+
+                //取得stream
+                var audioStream = await _youtubeclient.Videos.Streams.GetAsync(audioStreamInfo);
+                //string  MP4outPath = Path.Combine(folderPath, filename);
+                //outPath = outPath.Replace(".mp3", ".mp4");
                 //下載
-                await _youtubeclient.Videos.Streams.DownloadAsync(audioStreamInfo, outPath);
+                //await _youtubeclient.Videos.Streams.DownloadAsync(audioStreamInfo, MP4outPath);
+                
+                var Convert = new NReco.VideoConverter.FFMpegConverter();
+                String SaveMP3File = filename.Replace(".mp4", ".mp3");
+                string MP3outPath = Path.Combine(folderPath, SaveMP3File);
+                var settings = new ConvertSettings
+                {
+                    AudioCodec = "mp3",
+                    CustomOutputArgs = $"-b:a {nowkbps}k"
+                };
 
-           
+                try
+                {
+                     Convert.ConvertLiveMedia(audioStream, null, MP3outPath, null, settings).Start();
+                    //Convert.ConvertMedia(MP4outPath, null, MP3outPath, null, settings);
+                }
+                catch (Exception ex)
+                {
 
-                //ConvertToMp3(aaa, outPath);
-                Console.WriteLine($"已保存 MP3 文件至 {outPath}。");
+                }
+                //File.Delete(MP4outPath);
+               
+                await Console.Out.WriteLineAsync($"已保存 MP3 文件至 {MP3outPath}。");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"下載 {filename} 發生錯誤");
             }
+        }
+
+        private int kbpsSet(double orgkbps)
+        {
+            int nowkbps = 0;
+            //設定要轉換的kbps
+            switch (orgkbps)
+            {
+                case <= 96://64kbps
+                    nowkbps = 64;
+                    break;
+                case > 96 and <= 145://128kbps
+                    nowkbps = 128;
+                    break;
+                case > 145 and <= 224://192kbps
+                    nowkbps = 192;
+                    break;
+                case > 224 and <= 278://256kbps
+                    nowkbps = 256;
+                    break;
+                case > 278://320kbps
+                    nowkbps = 320;
+                    break;
+            }
+            return nowkbps;
         }
     }
 }
